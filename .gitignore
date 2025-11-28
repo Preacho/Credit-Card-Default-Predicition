@@ -5,3 +5,4 @@ hierarchical_clustering.ipynb
 isolation_forest.ipynb
 mutual_information.ipynb
 .venv
+*.py

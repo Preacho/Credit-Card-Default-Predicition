@@ -7,7 +7,8 @@
 #       format_version: '1.3'
 #       jupytext_version: 1.18.1
 #   kernelspec:
-#     display_name: Python 3
+#     display_name: .venv
+#     language: python
 #     name: python3
 # ---
 
@@ -25,6 +26,12 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.mixture import GaussianMixture
 from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
+from sklearn.model_selection import train_test_split, GridSearchCV, cross_val_score
+from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
+
+# clustering
+from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 from sklearn.cluster import KMeans
 from sklearn.cluster import AgglomerativeClustering
@@ -52,6 +59,16 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import classification_report, accuracy_score, f1_score, roc_auc_score
 
+
+# outlier detection
+from sklearn.ensemble import IsolationForest
+
+# feature selection
+from sklearn.feature_selection import mutual_info_classif
+
+# classification
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score, confusion_matrix, roc_curve
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 255} id="HbMNwokl8-Fn" outputId="2abfb044-796f-48d0-adb9-71b68442522c"
 # upload UCI_Credit_Card.csv to files
@@ -157,11 +174,10 @@ data.head()
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 488} id="OVcV_JB9Eo0h" outputId="bcbedcc0-2fcf-480d-fe47-0ef200c813f1"
 # Normalization/Standardization of data
-
+from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 num_cols = ['LIMIT_BAL','AGE'] + [f'BILL_AMT{i}' for i in range(1,7)] + [f'PAY_AMT{i}' for i in range(1,7)]
 data[num_cols].describe().T[['mean', 'std']]
-
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 488} id="k6fTmGRGE2ok" outputId="e0f3e440-fa56-4503-e506-65edc787828c"
 data[num_cols] = scaler.fit_transform(data[num_cols])
@@ -171,11 +187,14 @@ data[num_cols].describe().T[['mean', 'std']]
 # save preprocessed data to csv file
 data.to_csv('preprocessed_data.csv', index=False)
 
-# %% [markdown] id="pHJKwRwe9el-"
-# # Clustering
+# %% [markdown]
+# ### Read Preprocseed Data ###
 
 # %%
 data = pd.read_csv('preprocessed_data.csv')
+
+# %% [markdown] id="pHJKwRwe9el-"
+# # Clustering
 
 # %% colab={"base_uri": "https://localhost:8080/", "height": 653} id="cuUTXKQkvs-O" outputId="dcd7090b-525f-43f7-a265-ddfe24a2bc04"
 # Find optimal number of components using BIC and AIC
@@ -282,13 +301,14 @@ best_labels = None
 best_n = 2
 best_link = None
 
+# find best model using small sample
 data_sub = pd.DataFrame(data).sample(20000, random_state=42) # Reduce to 20k samples
 X_sub = data_sub.drop(['default.payment.next.month', 'ID'], axis=1)
 y_sub = data_sub['default.payment.next.month']
 
 for n in n_clusters:
     for l in linkages:
-        clustering = AgglomerativeClustering(n_clusters=n, linkage=l, compute_distances=True)
+        clustering = AgglomerativeClustering(n_clusters=n, linkage=l)
         labels = clustering.fit_predict(X_sub)
         temp_silhouette_score = silhouette_score(X_sub, labels)
         if (temp_silhouette_score > best_silhouette):
@@ -310,6 +330,7 @@ visualize_cluster(chart_X_sub, best_labels, title)
 tsne_X_sub = TSNE(2).fit_transform(X_sub)
 title_tsne = f"Hierarchical Clustering with {best_n} clusters and {best_link} as linkage criterion using t-SNE for dimensionality reduction"
 visualize_cluster(tsne_X_sub, best_labels, title_tsne)
+
 
 # %% [markdown] id="ijOdsnlLu5pp"
 # Clustering Method 3: K-Means
@@ -450,11 +471,12 @@ for contamination in contaminations:
     y_pred_train = clf.predict(X_train)
     y_pred_test = clf.predict(X_test)
 
+    # uncomment to see what each algorithm looks like
+    # title = f"Isolation Forest with contamination level: {contamination} using PCA"
+    # visualize_cluster(chart_X_test, y_pred_test, title)
+    # title_tsne = f"Isolation Forest with contamination level: {contamination} using t-SNE"
+    # visualize_cluster(tsne_X_test, y_pred_test, title_tsne)
 
-    title = f"Isolation Forest with contamination level: {contamination} using PCA"
-    visualize_cluster(chart_X_test[:, 0], chart_X_test[:, 1], y_pred_test, title)
-    title_tsne = f"Isolation Forest with contamination level: {contamination} using t-SNE"
-    visualize_cluster(tsne_X_test[:, 0], tsne_X_test[:, 1], y_pred_test, title_tsne)
 
 # %%
 # 0.01 looked the best
